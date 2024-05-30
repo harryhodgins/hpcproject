@@ -15,16 +15,7 @@ all: tsqr qrtest scattertest #tsqr_sharedmem
 tsqr:
 	$(GCC) $(GCCFLAGS) -o tsqr casestudy_tsqr.c -g
 
-qrtest:
-	$(ICC) $(GCCFLAGS) -o qrtest lapack_qr_test.c
-
-scattertest:
-	$(GCC) $(GCCFLAGS) -o scatter testing_scatter.c
-
-# tsqr_sharedmem:
-# 	$(ICC) $(MPFLAGS) -o tsqr_sharedmem tsqr_sharedmem.c
-
 clean:
-	rm -f tsqr qrtest scattertest 
+	rm -f tsqr
 
 .PHONY: all clean
