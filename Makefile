@@ -1,19 +1,31 @@
-#compiler
+# Compiler
 GCC = mpicc
 
-ICC = icc
+# MKL Root directory
 MKLROOT = /home/support/apps/intel/18.0.4/compilers_and_libraries_2018.5.274/linux/mkl
 
-#Compiler flags
-GCCFLAGS = -Wall -Wextra -llapacke -llapack -I$(MKLROOT)/include -L$(MKLROOT)/lib/intel64 \
-           -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread  -ldl
+# Compiler flags
+GCCFLAGS = -Wall -Wextra -I$(MKLROOT)/include
+LDFLAGS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -ldl -llapacke -llapack
 
-all: tsqr
+# Target
+TARGET = tsqr
 
-tsqr:
-	$(GCC) $(GCCFLAGS) -o tsqr.c -g
+# Source files
+SRCS = tsqr.c
+
+# Object files
+OBJS = $(SRCS:.c=.o)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(GCC) $(GCCFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+%.o: %.c
+	$(GCC) $(GCCFLAGS) -c $< -o $@
 
 clean:
-	rm -f tsqr
+	rm -f $(TARGET) $(OBJS)
 
 .PHONY: all clean
