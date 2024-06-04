@@ -15,4 +15,7 @@ typedef struct {
     int local_rows;
     int n;
 } MatrixBlock;
+
+MatrixBlock distributematrix(const char *filename,int rank,int nprocs);
+
 #endif // TSQR_H

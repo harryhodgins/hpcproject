@@ -5,7 +5,7 @@ GCC = mpicc
 MKLROOT = /home/support/apps/intel/18.0.4/compilers_and_libraries_2018.5.274/linux/mkl
 
 # Compiler flags
-GCCFLAGS = -Wall -Wextra -I$(MKLROOT)/include
+GCCFLAGS = -Wall -Wextra -I$(MKLROOT)/include -std=c11
 LDFLAGS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -ldl -llapacke -llapack
 
 # Target

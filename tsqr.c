@@ -18,11 +18,29 @@ int main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD,&myid);
     MPI_Status status;
 
+    //read and distribute the matrix
+    MatrixBlock block = distributematrix("tsqr_test_matrix.txt",myid,nprocs);
+
+    printf("Process %d received block:\n", myid);
+    for(int i = 0; i < block.local_rows; i++)
+    {
+        for(int j = 0; j < block.n; j++)
+        {
+            printf("%.1f ", block.local_A[i * block.n + j]);
+        }
+        printf("\n");
+    }
+
+    fflush(stdout); 
+
+    free(block.local_A);
+
+    MPI_Finalize();
 
     return 0;
 }
 
-void distributematrix(const char *filename,int rank,int nprocs)
+MatrixBlock distributematrix(const char *filename,int rank,int nprocs)
 {
     double *matrix = NULL;
     int m,n,rows;
@@ -60,4 +78,26 @@ void distributematrix(const char *filename,int rank,int nprocs)
 
         fclose(file);
     }
+
+    // broadcast number of cols & rows
+    MPI_Bcast(&n,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&rows,1,MPI_INT,0,MPI_COMM_WORLD);
+
+    m = rows/nprocs;
+
+    block.local_rows = m;
+    block.n = n;
+    block.local_A = (double *)malloc(m*n*sizeof(double));
+
+    //printf("(rank %d), block.local_rows = %d, block.n = %d\n",rank,block.local_rows,block.n);
+
+    // scatter matrix to all procs
+    MPI_Scatter(matrix,m*n,MPI_DOUBLE,block.local_A,m*n,MPI_DOUBLE,0,MPI_COMM_WORLD);
+
+    if(rank == 0)
+    {
+        free(matrix);
+    }
+
+    return block;
 }
