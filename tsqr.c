@@ -31,73 +31,36 @@ int main(int argc, char* argv[])
         printf("\n");
     }
 
-    fflush(stdout); 
+    double *Q,*R;
+    qr_factorisation(block,&Q,&R);
 
+    for (int k = 0; k < nprocs; k++) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (myid == k) {
+            printf("(rank %d)\n", myid);
+            printf("R matrix:\n");
+            for (int i = 0; i < block.n; i++) {
+                for (int j = 0; j < block.n; j++) {
+                    printf("%.2f ", R[i * block.n + j]);
+                }
+                printf("\n");
+            }
+
+            printf("Q matrix:\n");
+            for (int i = 0; i < block.local_rows; i++) {
+                for (int j = 0; j < block.n; j++) {
+                    printf("%.2f ", Q[i * block.n + j]);
+                }
+                printf("\n");
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
     free(block.local_A);
-
+    free(Q);
+    free(R);
     MPI_Finalize();
 
     return 0;
 }
 
-MatrixBlock distributematrix(const char *filename,int rank,int nprocs)
-{
-    double *matrix = NULL;
-    int m,n,rows;
-
-    MatrixBlock block;
-
-    if(rank == 0)
-    {
-        FILE *file = fopen(filename,"r");
-
-        if(file == NULL)
-        {
-            fprintf(stderr,"Error opening file\n");
-            MPI_Abort(MPI_COMM_WORLD,1);
-        }
-
-        fscanf(file,"%d %d",&rows,&n);
-        m = rows/nprocs;
-
-        if(rows%nprocs!=0)
-        {
-            fprintf(stderr,"Number of processes does not evenly divide matrix size\n");
-            MPI_Abort(MPI_COMM_WORLD,1);
-        }
-
-        matrix = (double *)malloc(rows*n*sizeof(double));
-        
-        for(int i = 0;i<rows;i++)
-        {
-            for(int j = 0;j<n;j++)
-            {
-                fscanf(file,"%lf",&matrix[i*n+j]);
-            }
-        }
-
-        fclose(file);
-    }
-
-    // broadcast number of cols & rows
-    MPI_Bcast(&n,1,MPI_INT,0,MPI_COMM_WORLD);
-    MPI_Bcast(&rows,1,MPI_INT,0,MPI_COMM_WORLD);
-
-    m = rows/nprocs;
-
-    block.local_rows = m;
-    block.n = n;
-    block.local_A = (double *)malloc(m*n*sizeof(double));
-
-    //printf("(rank %d), block.local_rows = %d, block.n = %d\n",rank,block.local_rows,block.n);
-
-    // scatter matrix to all procs
-    MPI_Scatter(matrix,m*n,MPI_DOUBLE,block.local_A,m*n,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
-    if(rank == 0)
-    {
-        free(matrix);
-    }
-
-    return block;
-}
