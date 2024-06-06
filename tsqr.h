@@ -80,11 +80,18 @@ MatrixBlock distributematrix(const char *filename,int rank,int nprocs)
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
-void qr_factorisation(MatrixBlock block,double **Q,double **R)
+/**
+ * @brief Computes the QR factorization of the local block matrix.
+ * 
+ * @param block The local block matrix.
+ * @param tau Matrix holding the householder reflectors used for constructing the Q factor.
+ * @param R The R factor of the decomposition.
+ */
+void qr_factorisation(MatrixBlock block,double **tau,double **R)
 {
-    double *tau = (double *)malloc(block.n*block.n*sizeof(double));
+    *tau = (double *)malloc(block.n*block.n*sizeof(double));
 
-    LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, block.local_rows, block.n, block.local_A, block.n, tau);
+    LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, block.local_rows, block.n, block.local_A, block.n, *tau);
 
     *R = (double *)malloc(block.n*block.n*sizeof(double));
     
@@ -103,25 +110,68 @@ void qr_factorisation(MatrixBlock block,double **Q,double **R)
         }
     }
 
-    *Q = (double *)malloc(block.local_rows*block.n*sizeof(double));
+    // *Q = (double *)malloc(block.local_rows*block.n*sizeof(double));
 
-    for(int i = 0;i<block.local_rows;i++)
+    // for(int i = 0;i<block.local_rows;i++)
+    // {
+    //     for(int j = 0;j<block.n;j++)
+    //     {
+    //         if(i==j)
+    //         {
+    //             (*Q)[i*block.n+j] = 1.0;
+    //         }
+    //         else
+    //         {
+    //             (*Q)[i*block.n+j] = 0;
+    //         }
+    //     }
+    // }
+
+    // LAPACKE_dormqr(LAPACK_ROW_MAJOR, 'L', 'N', block.local_rows, block.n,MIN(block.local_rows,block.n), block.local_A, block.n, tau, *Q, block.n);
+
+    // free(tau);
+}
+
+/**
+ * @brief Computes the QR factorization of the matrix formed by the stacked matrices R1 R2 from a given pairing in the binary tree.
+ * 
+ * @param R1 
+ * @param R2 
+ * @param n 
+ * @param R_new 
+ */
+void pairwise_qr(double *R1, double *R2, int n, double **R_new)
+{
+    double *A = (double *)malloc(2 * n * n * sizeof(double));
+
+    //copy R1 into 'top half' of A
+    memcpy(A, R1, n * n * sizeof(double));
+
+    //copy R2 into 'bottom half' of A
+    memcpy(A + n * n, R2, n * n * sizeof(double));
+
+    double *tau = (double *)malloc(n * sizeof(double));
+
+    LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, 2 * n, n, A, n, tau);
+
+    *R_new = (double *)malloc(n * n * sizeof(double));
+
+    for(int i = 0; i < n; i++)
     {
-        for(int j = 0;j<block.n;j++)
+        for(int j = 0; j < n; j++)
         {
-            if(i==j)
+            if(i <= j)
             {
-                (*Q)[i*block.n+j] = 1.0;
-            }
+                (*R_new)[i * n + j] = A[i * n + j];
+            } 
             else
             {
-                (*Q)[i*block.n+j] = 0;
+                (*R_new)[i * n + j] = 0;
             }
         }
     }
 
-    LAPACKE_dormqr(LAPACK_ROW_MAJOR, 'L', 'N', block.local_rows, block.n,MIN(block.local_A,block.n), block.local_A, block.n, tau, *Q, block.n);
-
+    free(A);
     free(tau);
 }
 #endif // TSQR_H
