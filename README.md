@@ -19,7 +19,7 @@ module load intel/18.0.4/parallel_studio_xe_2018.4.057
 The files are compiled by running 'make' in the terminal.
 
 ## File Structure
-Filenames including `tsqr` correspond to an implementation of CA-TSQR. 
+The folder `catsqr` contains files which implement CA-TSQR.
 
 ## Execution
 The tsqr file can be run on x processes using the following command  
