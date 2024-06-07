@@ -109,27 +109,6 @@ void qr_factorisation(MatrixBlock block,double **tau,double **R)
             }
         }
     }
-
-    // *Q = (double *)malloc(block.local_rows*block.n*sizeof(double));
-
-    // for(int i = 0;i<block.local_rows;i++)
-    // {
-    //     for(int j = 0;j<block.n;j++)
-    //     {
-    //         if(i==j)
-    //         {
-    //             (*Q)[i*block.n+j] = 1.0;
-    //         }
-    //         else
-    //         {
-    //             (*Q)[i*block.n+j] = 0;
-    //         }
-    //     }
-    // }
-
-    // LAPACKE_dormqr(LAPACK_ROW_MAJOR, 'L', 'N', block.local_rows, block.n,MIN(block.local_rows,block.n), block.local_A, block.n, tau, *Q, block.n);
-
-    // free(tau);
 }
 
 /**

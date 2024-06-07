@@ -57,42 +57,21 @@ int main(int argc, char* argv[])
         MPI_Barrier(MPI_COMM_WORLD);
         level++;
     }
-    // double *QR = (double *)malloc(block.local_rows*block.n*sizeof(double));
-    // cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, block.local_rows, block.n, block.n, 1.0, Q, block.n, R, block.n, 0.0, QR, block.n);
 
-    // for (int k = 0; k < nprocs; k++)
-    // {
-    //     MPI_Barrier(MPI_COMM_WORLD);
-    //     if(myid == k)
-    //     {
-    //         printf("(rank %d)\n", myid);
-    //         printf("QR matrix:\n");
-    //         for(int i = 0; i < block.local_rows; i++)
-    //         {
-    //             for(int j = 0; j < block.n; j++)
-    //             {
-    //                 printf("%.2f ", QR[i * block.n + j]);
-    //             }
-    //             printf("\n");
-    //         }
-    //     }
-    //     MPI_Barrier(MPI_COMM_WORLD);
-    // }
-    
-        if(myid == 0)
+    if(myid == 0)
+    {
+        printf("(rank %d)\n", myid);
+        printf("R matrix:\n");
+        for(int i = 0; i < block.n; i++)
         {
-            printf("(rank %d)\n", myid);
-            printf("R matrix:\n");
-            for(int i = 0; i < block.n; i++)
+            for(int j = 0; j < block.n; j++)
             {
-                for(int j = 0; j < block.n; j++)
-                {
-                    printf("%.2f ", R[i * block.n + j]);
-                }
-                printf("\n");
+                printf("%.2f ", R[i * block.n + j]);
             }
+            printf("\n");
         }
-    
+    }    
+        
     free(block.local_A);
     free(tau);
     free(R);
