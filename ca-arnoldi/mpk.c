@@ -16,7 +16,7 @@ typedef struct {
 } MatrixBlock;
 
 MatrixBlock distributematrix(const char *filename,int rank,int nprocs);
-void distributevector(int n,MatrixBlock block,double *v,int rank,int nprocs,double **local_vec,int **my_vec_pos);
+void mpk(int n,MatrixBlock block,double *v,int rank,int nprocs,double **local_vec,int **my_vec_pos);
 
 int main(int argc, char* argv[])
 {
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     }
 
     double *local_vec;
-    distributevector(n,block,v,myid,nprocs,&local_vec,&my_vec_pos);
+    mpk(n,block,v,myid,nprocs,&local_vec,&my_vec_pos);
 
     // printf("Process %d received block of vector:\n", myid);
     // for(int i = 0; i < block.local_rows; i++)
@@ -134,7 +134,7 @@ MatrixBlock distributematrix(const char *filename,int rank,int nprocs)
     return block;
 }
 
-void distributevector(int n,MatrixBlock block,double *v,int rank,int nprocs,double **local_vec,int **my_vec_pos)
+void mpk(int n,MatrixBlock block,double *v,int rank,int nprocs,double **local_vec,int **my_vec_pos)
 {
     MPI_Request request;
     MPI_Status status;
@@ -219,10 +219,17 @@ void distributevector(int n,MatrixBlock block,double *v,int rank,int nprocs,doub
 
             //send the request for data
             MPI_Isend(&req_indices[i],1,MPI_INT,proc,proc+100,MPI_COMM_WORLD,&request);
-            MPI_Wait(&request,&status);
+
+            //DO LOCAL COMPUTATION
+
+            //MPI_Wait(&request,&status);
             printf("(rank : %d) sent request to rank %d for index %d\n",rank,proc,req_indices[i]);
         }
     }
+    // else
+    // {
+    //     //DO LOCAL COMPUTATION
+    // }
     MPI_Win_fence(0, win);
 
     //receive the send request and send the data
@@ -239,7 +246,7 @@ void distributevector(int n,MatrixBlock block,double *v,int rank,int nprocs,doub
             //send the data
             double send_val = (*local_vec)[local_index];
             MPI_Isend(&send_val, 1, MPI_DOUBLE, source_rank, 1, MPI_COMM_WORLD, &request);
-            MPI_Wait(&request,&status);
+            //MPI_Wait(&request,&status);
             printf("(rank: %d)sent %f (index %d) to rank %d\n",rank,send_val,req_pos,source_rank);
 
             //determine if any more requests are coming through
@@ -251,10 +258,7 @@ void distributevector(int n,MatrixBlock block,double *v,int rank,int nprocs,doub
             }
         }        
     }
-    else
-    {
-       printf("(rank: %d) I am not a receiver\n",rank); 
-    }
+
 
     //receive the data that was requested earlier
     if(recv_count >0)
