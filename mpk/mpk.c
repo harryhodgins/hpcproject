@@ -16,7 +16,7 @@ typedef struct
 } MatrixBlock;
 
 MatrixBlock distributematrix(const char *filename, int rank, int nprocs);
-void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **local_vec, int **my_vec_pos);
+void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **local_vec);
 
 int main(int argc, char *argv[])
 {
@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
 
     int n = 512;
     double *v = NULL;
-    int *my_vec_pos;
     if (myid == 0)
     {
         v = (double *)malloc(n * sizeof(double));
@@ -43,7 +42,15 @@ int main(int argc, char *argv[])
     }
 
     double *local_vec;
-    mpk(n, block, v, myid, nprocs, &local_vec, &my_vec_pos);
+    double t1,t2;
+    t1 = MPI_Wtime();
+    mpk(n, block, v, myid, nprocs, &local_vec);
+    t2 = MPI_Wtime();
+    
+    if(myid == 0)
+    {
+      printf("Time taken: %f",t2-t1);
+    }
 
     // printf("Process %d received block of vector:\n", myid);
     // for(int i = 0; i < block.local_rows; i++)
@@ -63,7 +70,7 @@ int main(int argc, char *argv[])
     // }
 
     free(local_vec);
-    free(my_vec_pos);
+    //free(my_vec_pos);
     if (myid == 0)
     {
         free(v);
@@ -134,12 +141,22 @@ MatrixBlock distributematrix(const char *filename, int rank, int nprocs)
     return block;
 }
 
-void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **local_vec, int **my_vec_pos)
+/**
+ * @brief Computes a matrix vector product using the PA1 Matrix Powers Kernel algorithm discussed by Demmel et al.
+ * 
+ * @param n Input matrix dimension. 
+ * @param block Local matrix block owned by each process.
+ * @param v Input vector.
+ * @param rank Processor ID.
+ * @param nprocs Total number of processors in MPI environment.
+ * @param local_vec Local vector block owned by each process.
+ * @param my_vec_pos Don't use this?
+ */
+void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **local_vec)
 {
     MPI_Request request;
     MPI_Status status;
     int m = n / nprocs;                           // num components to be distributed to each proc
-    *my_vec_pos = (int *)malloc(m * sizeof(int)); // will hold indexes of v held by each proc
 
     if (n % nprocs != 0)
     {
@@ -148,12 +165,6 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
     }
     *local_vec = (double *)malloc(m * sizeof(double));
     MPI_Scatter(v, m, MPI_DOUBLE, *local_vec, m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    int start_index = rank * m;
-    for (int i = 0; i < m; i++)
-    {
-        (*my_vec_pos)[i] = start_index + i;
-    }
 
     // printf("(rank: %d) owns indexes\n",rank);
     // for(int i = 0;i<m;i++)
