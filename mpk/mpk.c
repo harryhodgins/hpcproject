@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
     // read and distribute the matrix
-    MatrixBlock block = distributematrix("dwt_512.txt", myid, nprocs);
+    MatrixBlock block = distributematrix("delaunay_n10_1024.txt", myid, nprocs);
 
-    int n = 512;
+    int n = 1024;
     double *v = NULL;
     if (myid == 0)
     {
