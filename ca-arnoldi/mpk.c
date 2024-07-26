@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
     // read and distribute the matrix
-    MatrixBlock block = distributematrix("ibm32.txt", myid, nprocs);
+    MatrixBlock block = distributematrix("dwt_512.txt", myid, nprocs);
 
-    int n = 32;
+    int n = 512;
     double *v = NULL;
     int *my_vec_pos;
     if (myid == 0)
@@ -164,11 +164,11 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
     int recv_proc;
     int recv_count = 0;
     int *req_indices = NULL;
-    bool *index_requested = (bool *)calloc(n, sizeof(bool)); // Bitmap to track requested indices
+    bool *index_requested = (bool *)calloc(n, sizeof(bool)); //will track duplicates
 
     int *local_indices = NULL;
     int local_count = 0;
-    bool *local_index_dupe = (bool *)calloc(n, sizeof(bool)); // Bitmap to track requested indices
+    bool *local_index_dupe = (bool *)calloc(n, sizeof(bool)); 
 
     for (int i = 0; i < block.local_rows; i++)
     {
@@ -197,13 +197,7 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
             }
         }
     }
-    // if (rank == 2)
-    // {
-    //     for (int i = 0; i < m; i++)
-    //     {
-    //         printf("%f\n", (*local_vec)[i]);
-    //     }
-    // }
+
     // test if identification stage was succesful
     // printf("(rank : %d) required indices\n", rank);
     // for (int i = 0; i < recv_count; i++)
@@ -245,25 +239,21 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
                 for (int i = 0; i < block.local_rows; i++)
                 {
                     local_result[i] = 0;
-                    for (int j = 0; j < block.local_rows; j++)
+                    for (int j = 0; j < block.cols; j++)
                     {
-                        // for (int k = 0; k < local_count; k++)
-                        // {
-                        //     if (j == local_indices[k])
-                        //     {
-                        //         int local_index = j % m;
-                        //         local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[local_index];
-                        //     }
-                        // }
-                        local_result[i] += block.local_data[i * block.local_rows + j] * (*local_vec)[j];
+                        for (int k = 0; k < local_count; k++)
+                        {
+                            if (j == local_indices[k])
+                            {
+                                int local_index = j % m;
+                                local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[local_index];
+                            }
+                        }
+                        // local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[j];
                     }
                 }
             }
             // MPI_Wait(&request,&status);
-            // if (rank == 0)
-            // {
-            //     printf("(rank : %d) sent request to rank %d for index %d\n", rank, proc, req_indices[i]);
-            // }
         }
     }
     else
@@ -274,30 +264,22 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
             for (int i = 0; i < block.local_rows; i++)
             {
                 local_result[i] = 0;
-                for (int j = 0; j < block.local_rows; j++)
+                for (int j = 0; j < block.cols; j++)
                 {
-                    // for (int k = 0; k < local_count; k++)
-                    // {
-                    //     if (j == local_indices[k])
-                    //     {
-                    //         int local_index = j % m;
-                    //         local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[local_index];
-                    //         break;
-                    //     }
-                    // }
-                    local_result[i] += block.local_data[i * block.local_rows + j] * (*local_vec)[j];
+                    for (int k = 0; k < local_count; k++)
+                    {
+                        if (j == local_indices[k])
+                        {
+                            int local_index = j % m;
+                            local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[local_index];
+                        }
+                    }
                 }
             }
         }
     }
     MPI_Win_fence(0, win);
-    if (rank == 0)
-    {
-        for (int i = 0; i < m; i++)
-        {
-            printf("%f\n", local_result[i]);
-        }
-    }
+   
     // receive the send request and send the data
     if (is_receiver == 1)
     {
@@ -306,17 +288,12 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
             MPI_Irecv(&req_pos, 1, MPI_INT, MPI_ANY_SOURCE, rank + 100, MPI_COMM_WORLD, &request);
             MPI_Wait(&request, &status);
             source_rank = status.MPI_SOURCE; // determine who sent the request
-            int local_index = req_pos % m;   // compute the local index on this process relative to the global idex which was requested
-            // printf("(rank : %d) received request from rank %d for index %d (value = %f)\n",rank,source_rank,req_pos,(*local_vec)[local_index]);
+            int local_index = req_pos % m;   // compute the local index on this process relative to the global index which was requested
 
             // send the data
             double send_val = (*local_vec)[local_index];
             MPI_Isend(&send_val, 1, MPI_DOUBLE, source_rank, 1, MPI_COMM_WORLD, &request);
             // MPI_Wait(&request,&status);
-            // if (rank == 0)
-            // {
-            //     printf("(rank: %d)sent %f (index %d) to rank %d\n", rank, send_val, req_pos, source_rank);
-            // }
 
             // determine if any more requests are coming through
             int flag;
@@ -343,20 +320,7 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
         }
     }
 
-    // printf("rank : %d\n",rank);
-    // for(int i = 0;i<recv_count;i++)
-    // {
-    //     printf("(index: %d, val : %f)\n",req_indices[i],recv_indices[i]);
-    // }
-    // if (rank == 0)
-    // {
-    //     printf("rank : %d\n", rank);
-    //     for (int i = 0; i < recv_count; i++)
-    //     {
-    //         printf("(index: %f)\n", recv_indices[i]);
-    //     }
-    // }
-
+    //perform final communication-dependent computations
     if (recv_count > 0)
     {
         for (int i = 0; i < block.local_rows; i++)
@@ -382,13 +346,13 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
     }
 
     MPI_Gather(local_result, m, MPI_DOUBLE, final_result, m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    // if (rank == 0)
-    // {
-    //     for (int i = 0; i < n; i++)
-    //     {
-    //         printf("%f\n", final_result[i]);
-    //     }
-    // }
+    if (rank == 0)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            printf("%f\n", final_result[i]);
+        }
+    }
 
     free(recv_indices);
     free(req_indices);
