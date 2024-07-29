@@ -1,3 +1,12 @@
+/**
+ * @file mpk.c
+ * @author H.Hodgins (hodginsh@tcd.ie)
+ * @brief An attempt to implement the PA1 matrix-powers-kernel algorithm from Demmel et al.
+ * @version 1.0
+ * @date 2024-07-29
+ *  
+ */
+
 #include <stdio.h>
 #include <mpi.h>
 #include <stdlib.h>
@@ -7,6 +16,7 @@
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
 #include <stdbool.h>
+#include <omp.h>
 
 typedef struct
 {
@@ -28,9 +38,9 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
     // read and distribute the matrix
-    MatrixBlock block = distributematrix("delaunay_n10_1024.txt", myid, nprocs);
+    MatrixBlock block = distributematrix("delaunay_n12_4096.txt", myid, nprocs);
 
-    int n = 1024;
+    int n = 4096;
     double *v = NULL;
     if (myid == 0)
     {
@@ -42,14 +52,17 @@ int main(int argc, char *argv[])
     }
 
     double *local_vec;
-    double t1,t2;
+    double t1, t2;
+    MPI_Barrier(MPI_COMM_WORLD);
     t1 = MPI_Wtime();
     mpk(n, block, v, myid, nprocs, &local_vec);
+    MPI_Barrier(MPI_COMM_WORLD);
     t2 = MPI_Wtime();
-    
-    if(myid == 0)
+
+    if (myid == 0)
     {
-      printf("Time taken: %f",t2-t1);
+        printf("Time taken: %f\n", t2 - t1);
+        free(v);
     }
 
     // printf("Process %d received block of vector:\n", myid);
@@ -70,11 +83,6 @@ int main(int argc, char *argv[])
     // }
 
     free(local_vec);
-    //free(my_vec_pos);
-    if (myid == 0)
-    {
-        free(v);
-    }
     MPI_Finalize();
     return 0;
 }
@@ -143,8 +151,8 @@ MatrixBlock distributematrix(const char *filename, int rank, int nprocs)
 
 /**
  * @brief Computes a matrix vector product using the PA1 Matrix Powers Kernel algorithm discussed by Demmel et al.
- * 
- * @param n Input matrix dimension. 
+ *
+ * @param n Input matrix dimension.
  * @param block Local matrix block owned by each process.
  * @param v Input vector.
  * @param rank Processor ID.
@@ -156,7 +164,7 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
 {
     MPI_Request request;
     MPI_Status status;
-    int m = n / nprocs;                           // num components to be distributed to each proc
+    int m = n / nprocs; // num components to be distributed to each proc
 
     if (n % nprocs != 0)
     {
@@ -166,6 +174,14 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
     *local_vec = (double *)malloc(m * sizeof(double));
     MPI_Scatter(v, m, MPI_DOUBLE, *local_vec, m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+    double *local_mat = (double *)malloc(block.local_rows * block.local_rows * sizeof(double));
+    for (int i = 0; i < block.local_rows; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            local_mat[i * m + j] = block.local_data[i * block.cols + rank * m + j];
+        }
+    }
     // printf("(rank: %d) owns indexes\n",rank);
     // for(int i = 0;i<m;i++)
     // {
@@ -175,12 +191,13 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
     int recv_proc;
     int recv_count = 0;
     int *req_indices = NULL;
-    bool *index_requested = (bool *)calloc(n, sizeof(bool)); //will track duplicates
+    bool *index_requested = (bool *)calloc(n, sizeof(bool)); // will track duplicates
 
     int *local_indices = NULL;
     int local_count = 0;
-    bool *local_index_dupe = (bool *)calloc(n, sizeof(bool)); 
+    bool *local_index_dupe = (bool *)calloc(n, sizeof(bool));
 
+    double t_1 = MPI_Wtime();
     for (int i = 0; i < block.local_rows; i++)
     {
         for (int j = 0; j < block.cols; j++)
@@ -208,6 +225,7 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
             }
         }
     }
+    double t_2 = MPI_Wtime();
 
     // test if identification stage was succesful
     // printf("(rank : %d) required indices\n", rank);
@@ -228,70 +246,100 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
 
     double *local_result = (double *)calloc(m, sizeof(double));
 
+    double t_3 = MPI_Wtime();
+    // if (recv_count > 0)
+    // {
+    //     for (int i = 0; i < recv_count; i++)
+    //     {
+    //         // double start_req = MPI_Wtime();
+    //         //  determine who we want to request data from
+    //         int global_index = req_indices[i];
+    //         int proc = (global_index / m) % nprocs;
+    //         // set is_receiver equal to one on the process we want to receive data from
+    //         int value = 1;
+    //         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, proc, 0, win);
+    //         MPI_Put(&value, 1, MPI_INT, proc, 0, 1, MPI_INT, win);
+    //         MPI_Win_unlock(proc, win);
+
+    //         // send the request for data
+    //         MPI_Isend(&req_indices[i], 1, MPI_INT, proc, proc + 100, MPI_COMM_WORLD, &request);
+    //         // double finish_req = MPI_Wtime();
+    //         //  if(rank == 0)
+    //         //  {
+    //         //      printf("requesting stage: %f\n",finish_req-start_req);
+    //         //  }
+    //         //  DO LOCAL COMPUTATION
+    //     }
+    //     if (local_count > 0)
+    //     {
+    //         cblas_dgemv(CblasRowMajor, CblasNoTrans, block.local_rows, block.local_rows, 1.0, local_mat, block.local_rows, *local_vec, 1, 0.0, local_result, 1);
+    //     }
+    // }
+    // else
+    // {
+    //     // DO LOCAL COMPUTATION
+    //     if (local_count > 0)
+    //     {
+    //         cblas_dgemv(CblasRowMajor, CblasNoTrans, block.local_rows, block.local_rows, 1.0, local_mat, block.local_rows, *local_vec, 1, 0.0, local_result, 1);
+    //     }
+    // }
     if (recv_count > 0)
     {
+        // Allocate space for requests
+        MPI_Request *send_requests = (MPI_Request *)malloc(recv_count * sizeof(MPI_Request));
+        MPI_Request *put_requests = (MPI_Request *)malloc(recv_count * sizeof(MPI_Request));
+        MPI_Status *statuses = (MPI_Status *)malloc(recv_count * sizeof(MPI_Status));
+        bool *receiver_set = (bool *)calloc(nprocs, sizeof(bool)); // Track which processes have been set as receivers
+
+        // Post all the requests first
         for (int i = 0; i < recv_count; i++)
         {
-            // determine who we want to request data from
             int global_index = req_indices[i];
             int proc = (global_index / m) % nprocs;
-            // set is_receiver equal to one on the process we want to receive data from
-            int value = 1;
-            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, proc, 0, win);
-            MPI_Put(&value, 1, MPI_INT, proc, 0, 1, MPI_INT, win);
-            MPI_Win_unlock(proc, win);
 
-            // send the request for data
-            MPI_Isend(&req_indices[i], 1, MPI_INT, proc, proc + 100, MPI_COMM_WORLD, &request);
-
-            // DO LOCAL COMPUTATION
-            if (local_count > 0)
+            // Set is_receiver equal to one on the process we want to receive data from
+            if (!receiver_set[proc])
             {
-                for (int i = 0; i < block.local_rows; i++)
-                {
-                    local_result[i] = 0;
-                    for (int j = 0; j < block.cols; j++)
-                    {
-                        for (int k = 0; k < local_count; k++)
-                        {
-                            if (j == local_indices[k])
-                            {
-                                int local_index = j % m;
-                                local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[local_index];
-                            }
-                        }
-                        // local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[j];
-                    }
-                }
+                int value = 1;
+                MPI_Win_lock(MPI_LOCK_EXCLUSIVE, proc, 0, win);
+                MPI_Put(&value, 1, MPI_INT, proc, 0, 1, MPI_INT, win);
+                MPI_Win_unlock(proc, win);
+                receiver_set[proc] = true;
             }
-            // MPI_Wait(&request,&status);
+
+            // Send the request for data
+            MPI_Isend(&req_indices[i], 1, MPI_INT, proc, proc + 100, MPI_COMM_WORLD, &send_requests[i]);
         }
+
+        // Perform local computation while requests are being processed
+        if (local_count > 0)
+        {
+            cblas_dgemv(CblasRowMajor, CblasNoTrans, block.local_rows, block.local_rows, 1.0, local_mat, block.local_rows, *local_vec, 1, 0.0, local_result, 1);
+        }
+
+        // Wait for all requests to complete
+        MPI_Waitall(recv_count, send_requests, statuses);
+
+        free(send_requests);
+        free(put_requests);
+        free(statuses);
+        free(receiver_set);
     }
     else
     {
-        // DO LOCAL COMPUTATION
+        // Perform local computation if there are no requests
         if (local_count > 0)
         {
-            for (int i = 0; i < block.local_rows; i++)
-            {
-                local_result[i] = 0;
-                for (int j = 0; j < block.cols; j++)
-                {
-                    for (int k = 0; k < local_count; k++)
-                    {
-                        if (j == local_indices[k])
-                        {
-                            int local_index = j % m;
-                            local_result[i] += block.local_data[i * block.cols + j] * (*local_vec)[local_index];
-                        }
-                    }
-                }
-            }
+            cblas_dgemv(CblasRowMajor, CblasNoTrans, block.local_rows, block.local_rows, 1.0, local_mat, block.local_rows, *local_vec, 1, 0.0, local_result, 1);
         }
     }
+
+    double t_4 = MPI_Wtime();
+
     MPI_Win_fence(0, win);
-   
+
     // receive the send request and send the data
+    double t_5 = MPI_Wtime();
     if (is_receiver == 1)
     {
         while (true) // process multiple data-send-requests
@@ -315,8 +363,10 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
             }
         }
     }
+    double t_6 = MPI_Wtime();
 
     // receive the data that was requested earlier
+    double t_7 = MPI_Wtime();
     if (recv_count > 0)
     {
         for (int i = 0; i < recv_count; i++)
@@ -330,25 +380,33 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
             recv_indices[i] = rec_val;
         }
     }
+    double t_8 = MPI_Wtime();
 
-    //perform final communication-dependent computations
-    if (recv_count > 0)
+    double t_9 = MPI_Wtime();
+    
+    //hash-map style datastructure for the final multiplication
+    double *lookup_table = (double *)calloc(n, sizeof(double));
+    for (int k = 0; k < recv_count; k++)
     {
-        for (int i = 0; i < block.local_rows; i++)
+        lookup_table[req_indices[k]] = recv_indices[k];
+    }
+
+    //final communication-dependent computations
+    #pragma omp parallel for
+    for (int i = 0; i < block.local_rows; i++)
+    {
+        for (int j = rank * m; j < block.cols; j++)
         {
-            for (int j = 0; j < block.cols; j++)
+            if (lookup_table[j] != 0)
             {
-                for (int k = 0; k < recv_count; k++)
-                {
-                    if (j == req_indices[k])
-                    {
-                        local_result[i] += block.local_data[i * block.cols + j] * recv_indices[k];
-                    }
-                }
+                local_result[i] += block.local_data[i * block.cols + j] * lookup_table[j];
             }
         }
     }
 
+    free(lookup_table);
+    double t_10 = MPI_Wtime();
+    
     // gather final result to root
     double *final_result = NULL;
     if (rank == 0)
@@ -365,6 +423,14 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double **loc
         }
     }
 
+    if (rank == 0)
+    {
+        printf("identification stage: %f\n", t_2 - t_1);
+        printf("requesting indices stage: %f\n", t_4 - t_3);
+        printf("sending indices stage: %f\n", t_6 - t_5);
+        printf("receiving indices stage: %f\n", t_8 - t_7);
+        printf("final multiplication: %f\n", t_10 - t_9);
+    }
     free(recv_indices);
     free(req_indices);
     free(index_requested);
