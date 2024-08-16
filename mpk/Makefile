@@ -2,17 +2,22 @@
 GCC = mpicc
 
 # MKL Root directory
-MKLROOT = /opt/intel/oneapi/mkl/2024.2
+MKLROOT = /home/support/rl8/intel/oneapi/2024.1.0/mkl/2024.1
 
 # Compiler flags
-GCCFLAGS = -Wall -Wextra -I$(MKLROOT)/include -std=c11
-LDFLAGS = -L$(MKLROOT)/lib/intel64 -lmkl_sequential -lmkl_core -lpthread -ldl -llapacke -llapack -lblas
+GCCFLAGS = -Wall -Wextra -I$(MKLROOT)/include -std=c11 -fopenmp
+
+# Linker flags
+LDFLAGS = -L$(MKLROOT)/lib/intel64 \
+          -L/home/support/rl8/intel/oneapi/2024.1.0/compiler/2024.1/lib \
+          -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
+          -liomp5 -lpthread -lm -ldl
 
 # Target
-TARGETS = mpk
+TARGETS = mpk mpkv2 mpkcomm pa0
 
 # Source files
-SRCS = mpk.c
+SRCS = mpk.c mpk_v2.c mpk_comm_only.c pa0.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)
@@ -21,6 +26,15 @@ all: $(TARGETS)
 
 mpk: mpk.o
 	$(GCC) $(GCCFLAGS) -o $@ mpk.o $(LDFLAGS)
+
+mpkv2: mpk_v2.o
+	$(GCC) $(GCCFLAGS) -o $@ mpk_v2.o $(LDFLAGS)
+
+mpkcomm: mpk_comm_only.o
+	$(GCC) $(GCCFLAGS) -o $@ mpk_comm_only.o $(LDFLAGS)
+	
+pa0: pa0.o
+	$(GCC) $(GCCFLAGS) -o $@ pa0.o $(LDFLAGS)
 
 %.o: %.c
 	$(GCC) $(GCCFLAGS) -c $< -o $@
