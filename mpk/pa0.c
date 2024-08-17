@@ -26,7 +26,8 @@ typedef struct
 } MatrixBlock;
 
 MatrixBlock distributematrix(const char *filename, int rank, int nprocs);
-void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double *result);
+// void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double *result);
+void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result);
 
 int main(int argc, char *argv[])
 {
@@ -52,12 +53,15 @@ int main(int argc, char *argv[])
         }
     }
 
-    double *result = (double *)calloc(n, sizeof(double));
+    // double *result = (double *)calloc(n, sizeof(double));
+    double *result = NULL;
+    int k = 10;
     double t1, t2, elapsed_time;
     double max_time, min_time, avg_time;
     MPI_Barrier(MPI_COMM_WORLD);
     t1 = MPI_Wtime();
-    mpk(n, block, v, myid, nprocs, result);
+    // mpk(n, block, v, myid, nprocs, result);
+    mpk(n, block, v, myid, nprocs, k, &result);
     MPI_Barrier(MPI_COMM_WORLD); // Synchronize all processes
     t2 = MPI_Wtime();
 
@@ -74,6 +78,23 @@ int main(int argc, char *argv[])
         printf("Max time: %f seconds\n", max_time);
         printf("Min time: %f seconds\n", min_time);
         printf("Avg time: %f seconds\n", avg_time);
+    }
+
+    if (myid == 0)
+    {
+        // Process or print the result matrix
+        // printf("Result matrix (first few elements):\n");
+        // for (int i = 0; i < n; i++)
+        // {
+        //     for (int j = 0; j < k; j++)
+        //     {
+        //         printf("%f ", result[i + j * n]);
+        //     }
+        //     printf("\n");
+        // }
+
+        // Free the result matrix memory
+        free(result);
     }
 
     // printf("Process %d received block of vector:\n", myid);
@@ -93,7 +114,7 @@ int main(int argc, char *argv[])
     //     printf("\n");
     // }
 
-    free(result);
+    //free(result);
     free(v);
     MPI_Finalize();
     return 0;
@@ -163,39 +184,55 @@ MatrixBlock distributematrix(const char *filename, int rank, int nprocs)
 
 /**
  * @brief Calculates the Matrix-Vector Product using collective MPI operations.
- * 
+ *
  * @param n Size of the square input matrix
  * @param block Matrix block owned by each process.
  * @param v Input vector.
  * @param rank Process ID.
  * @param nprocs Total number of processes in MPI environment.
- * @param result Final result of the computation.
+ * @param result Matrix with columns equal to the result vector of each iteration.
+ * @param k Generate vectors up to A^k v.
  */
-void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs,double *result)
+void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result)
 {
     int m = n / nprocs; //num local vector components in each proc
+    double *local_result = (double *)malloc(m * sizeof(double));
+    double *global_vec = (double *)malloc(n * sizeof(double));
+    memcpy(global_vec, v, n * sizeof(double)); //holds current 'input' vector on each iteration, starting with just v
 
-    double *local_result = (double *)calloc(m, sizeof(double));
-    MPI_Bcast(v, n, MPI_DOUBLE, 0, MPI_COMM_WORLD); // Broadcast the Vector
-
-    //perform local matrix-vector multiplication
-    for(int i = 0;i<m;i++)
+    if (rank == 0)
     {
-        for(int j = 0;j<n;j++)
+        *result = (double *)malloc(n * k * sizeof(double)); // result matrix whose cols are Av,...,A^k v
+    }
+
+    for (int m = 0; m < k; m++)
+    {
+        //broadcast vector to all processes
+        MPI_Bcast(global_vec, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        //perform local matrix-vector multiplication
+        memset(local_result, 0, m * sizeof(double)); //reset result of current iteration
+        for (int i = 0; i < m; i++)
         {
-            local_result[i]+=v[j]*block.local_data[i*block.cols+j];
+            for (int j = 0; j < n; j++)
+            {
+                local_result[i] += global_vec[j] * block.local_data[i * block.cols + j];
+            }
+        }
+
+        //gather result to the input vector for the next iteration
+        MPI_Allgather(local_result, m, MPI_DOUBLE, global_vec, m, MPI_DOUBLE, MPI_COMM_WORLD);
+
+        //construct result matrix with columns Av,...,A^kv
+        if (rank == 0)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                (*result)[i + iter * n] = global_vec[i];
+            }
         }
     }
 
-    //gather results to root
-    MPI_Gather(local_result,m,MPI_DOUBLE,result,m,MPI_DOUBLE,0,MPI_COMM_WORLD);
-
     free(local_result);
-    // if (rank == 0)
-    // {
-    //     for (int i = 0; i < n; i++)
-    //     {
-    //         printf("%f\n",result[i]);
-    //     }
-    // }
+    free(global_vec);
 }
