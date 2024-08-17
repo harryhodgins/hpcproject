@@ -82,8 +82,8 @@ int main(int argc, char *argv[])
 
     if (myid == 0)
     {
-        // Process or print the result matrix
-        // printf("Result matrix (first few elements):\n");
+        //print result matrix
+        // printf("Result matrix:\n");
         // for (int i = 0; i < n; i++)
         // {
         //     for (int j = 0; j < k; j++)
@@ -92,8 +92,6 @@ int main(int argc, char *argv[])
         //     }
         //     printf("\n");
         // }
-
-        // Free the result matrix memory
         free(result);
     }
 
@@ -191,7 +189,7 @@ MatrixBlock distributematrix(const char *filename, int rank, int nprocs)
  * @param rank Process ID.
  * @param nprocs Total number of processes in MPI environment.
  * @param result Matrix with columns equal to the result vector of each iteration.
- * @param k Generate vectors up to A^k v.
+ * @param k Generate vectors up to A^k.
  */
 void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result)
 {
@@ -205,7 +203,7 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, doubl
         *result = (double *)malloc(n * k * sizeof(double)); // result matrix whose cols are Av,...,A^k v
     }
 
-    for (int m = 0; m < k; m++)
+    for (int l = 0; l < k; l++)
     {
         //broadcast vector to all processes
         MPI_Bcast(global_vec, n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -228,7 +226,7 @@ void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, doubl
         {
             for (int i = 0; i < n; i++)
             {
-                (*result)[i + iter * n] = global_vec[i];
+                (*result)[i + l * n] = global_vec[i];
             }
         }
     }
