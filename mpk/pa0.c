@@ -27,7 +27,7 @@ typedef struct
 
 MatrixBlock distributematrix(const char *filename, int rank, int nprocs);
 // void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, double *result);
-void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result);
+void pa0(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result);
 
 int main(int argc, char *argv[])
 {
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     t1 = MPI_Wtime();
     // mpk(n, block, v, myid, nprocs, result);
-    mpk(n, block, v, myid, nprocs, k, &result);
+    pa0(n, block, v, myid, nprocs, k, &result);
     MPI_Barrier(MPI_COMM_WORLD); // Synchronize all processes
     t2 = MPI_Wtime();
 
@@ -191,7 +191,7 @@ MatrixBlock distributematrix(const char *filename, int rank, int nprocs)
  * @param result Matrix with columns equal to the result vector of each iteration.
  * @param k Generate vectors up to A^k.
  */
-void mpk(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result)
+void pa0(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, double **result)
 {
     int m = n / nprocs; //num local vector components in each proc
     double *local_result = (double *)malloc(m * sizeof(double));
