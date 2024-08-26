@@ -14,28 +14,25 @@ LDFLAGS = -L$(MKLROOT)/lib/intel64 \
           -liomp5 -lpthread -lm -ldl
 
 # Target
-TARGETS = mpk mpkv2 mpkcomm pa0
+TARGETS = pa0 pa1v2 pa1v1
 
 # Source files
-SRCS = mpk.c mpk_v2.c mpk_comm_only.c pa0.c
+SRCS = pa0.c pa1v2.c pa1v1.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGETS)
 
-mpk: mpk.o
-	$(GCC) $(GCCFLAGS) -o $@ mpk.o $(LDFLAGS)
-
-mpkv2: mpk_v2.o
-	$(GCC) $(GCCFLAGS) -o $@ mpk_v2.o $(LDFLAGS)
-
-mpkcomm: mpk_comm_only.o
-	$(GCC) $(GCCFLAGS) -o $@ mpk_comm_only.o $(LDFLAGS)
+pa1v1: pa1v1.o
+	$(GCC) $(GCCFLAGS) -o $@ pa1v1.o $(LDFLAGS)
 	
 pa0: pa0.o
 	$(GCC) $(GCCFLAGS) -o $@ pa0.o $(LDFLAGS)
 
+pa1v2: pa1_v2.o
+	$(GCC) $(GCCFLAGS) -o $@ pa1_v2.o $(LDFLAGS)
+	
 %.o: %.c
 	$(GCC) $(GCCFLAGS) -c $< -o $@
 
