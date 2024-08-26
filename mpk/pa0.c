@@ -39,9 +39,9 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
     // read and distribute the matrix
-    MatrixBlock block = distributematrix("delaunay_n12_4096.txt", myid, nprocs);
+    MatrixBlock block = distributematrix("delaunay_n10_1024.txt", myid, nprocs);
 
-    int n = 4096;
+    int n = 1024;
     double *v = (double *)malloc(n * sizeof(double));
     ;
     if (myid == 0)
@@ -219,7 +219,8 @@ void pa0(int n, MatrixBlock block, double *v, int rank, int nprocs, int k, doubl
         }
 
         //gather result to the input vector for the next iteration
-        MPI_Allgather(local_result, m, MPI_DOUBLE, global_vec, m, MPI_DOUBLE, MPI_COMM_WORLD);
+        //MPI_Allgather(local_result, m, MPI_DOUBLE, global_vec, m, MPI_DOUBLE, MPI_COMM_WORLD);
+        MPI_Gather(local_result, m, MPI_DOUBLE, global_vec, m, MPI_DOUBLE,0 ,MPI_COMM_WORLD);
 
         //construct result matrix with columns Av,...,A^kv
         if (rank == 0)
