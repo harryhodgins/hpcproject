@@ -1,4 +1,4 @@
-# MAtrix Powers Kernel
+# Matrix Powers Kernel
 
 This folder contains C files which contain implementations of the PA0 and PA1 algorithms created by Demmel et al. in 'Avoiding Communication in Sparse Matrix Computations'.
 
