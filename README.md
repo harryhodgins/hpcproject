@@ -23,8 +23,10 @@ module load openmpi/4.1.6-gcc-8.5.0-fjgly4p tbb compiler-rt intel_ipp_intel64/la
 The files are compiled by typing `make` in the terminal.
 
 ## File Structure
-The folder `catsqr` contains files which implement the TSQR algorithm.
-The folder `mpk` contains files which implement the matrix powers kernels algorithms.
+- The folder `catsqr` contains files which implement the TSQR algorithm.
+- The folder `mpk` contains files which implement the matrix powers kernels algorithms.
+- The folder `ca-arnoldi` contains early files from development which only ran on chuck before it was updated.
+- The folder `utility_functions` contains the Python scripts used for generating plots and processing input files.
 
 
 ## Execution
