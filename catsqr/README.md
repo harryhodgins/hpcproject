@@ -26,6 +26,7 @@ The files are compiled by typing `make` in the terminal.
 ## Execution
 - To execute the code, run the command
 ```bash
+chmod +x tsqr.sh
 sbatch tsqr.sh
 ```    
 
