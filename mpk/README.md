@@ -25,16 +25,20 @@ The files are compiled by typing `make` in the terminal.
 
 
 ## Execution
+- Note: git does not seem to transfer the file permissions for the bash scripts below, so it is necessary to run the `chmod` command first as shown.
 - To execute the pa0 code, run the command
 ```bash
+chmod +x scaling_tests.sh
 ./scaling_tests.sh
 ```    
 - To execute the pa1v1 code, run the command
 ```bash
+chmod +x scaling_tests_pa1v1.sh
 ./scaling_tests_pa1v1.sh
 ```    
 - To execute the pa1v2 code, run the command
 ```bash
+chmod +x scaling_tests_pa1v2.sh
 ./scaling_tests_pa1v2.sh
 ```    
 
