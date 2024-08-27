@@ -1,4 +1,4 @@
-# Matrix Powers Kernel
+# TSQR
 
 This folder contains C files which contain a distributed-memory parallel implementation of the TSQR algorithm created by Demmel et al.
 
