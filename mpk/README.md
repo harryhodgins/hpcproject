@@ -38,6 +38,9 @@ The files are compiled by typing `make` in the terminal.
 ./scaling_tests_pa1v2.sh
 ```    
 
+The output will appear in a directory called `slurm_files`.
+
+
 ## Acknowledgement
 The seagull cluster used for this program is managed and maintained by Research IT.
 Information is available at the link below:  
