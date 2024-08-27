@@ -20,7 +20,7 @@ MatrixBlock distributematrix(const char *filename,int rank,int nprocs);
 void qr_factorisation(MatrixBlock block,double **tau,double **R);
 void pairwise_qr(double *R1, double *R2, int n, double **R_new);
 void tsqr(MatrixBlock block,double **R_final,int myid,int nprocs);
-void get_q(int myid, MatrixBlock block, double *R_final, double *full_matrix, int nprocs, double **Q);
+void get_q(MatrixBlock block, double **R,double **Q,double *full_matrix);
 void gather_full_matrix(double *local_A, int local_rows, int n, int rank, int nprocs,double *full_matrix);
 
 void gather_full_matrix(double *local_A, int local_rows, int n, int rank, int nprocs,double *full_matrix)
@@ -28,16 +28,16 @@ void gather_full_matrix(double *local_A, int local_rows, int n, int rank, int np
 
     MPI_Gather(local_A, local_rows * n, MPI_DOUBLE, full_matrix, local_rows * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    if (rank == 0) {
-        printf("Full matrix gathered at root:\n");
-        for (int i = 0; i < local_rows * nprocs; i++) {
-            for (int j = 0; j < n; j++) {
-                printf("%.2f ", full_matrix[i * n + j]);
-            }
-            printf("\n");
-        }
+    // if (rank == 0) {
+    //     printf("Full matrix gathered at root:\n");
+    //     for (int i = 0; i < local_rows * nprocs; i++) {
+    //         for (int j = 0; j < n; j++) {
+    //             printf("%.2f ", full_matrix[i * n + j]);
+    //         }
+    //         printf("\n");
+    //     }
         
-    }
+    // }
 }
 
 MatrixBlock distributematrix(const char *filename,int rank,int nprocs)
@@ -220,56 +220,34 @@ void tsqr(MatrixBlock block,double **R_final,int myid,int nprocs)
 }
 
 /**
- * @brief Get the Q factor of the QR factorisation by computing Q = AR^{-1}
+ * @brief Recover the Q factor explicitly
  * 
- * @param myid 
- * @param block 
- * @param R_final 
- * @param full_matrix 
- * @param nprocs 
- * @param Q 
+ * @param block Matrixblock struct
+ * @param R R factor
+ * @param Q Q factor
+ * @param full_matrix Full matrix scanned in. 
  */
-void get_q(int myid, MatrixBlock block, double *R_final, double *full_matrix, int nprocs, double **Q) {
-    if (myid == 0) {
-        int n = block.n;
-        int lda = block.n;
-        int info;
+void get_q(MatrixBlock block, double **R,double **Q,double *full_matrix)
+{
+    int n = block.n;
+    int lda = n;
+    int info;
 
-        // Allocate memory for the inverse of R
-        double *R_inv = (double *)malloc(n * n * sizeof(double));
-        memcpy(R_inv, R_final, n * n * sizeof(double));
+    // Allocate memory for the inverse of R
+    double *R_inv = (double *)malloc(n * n * sizeof(double));
+    memcpy(R_inv, R, n * n * sizeof(double));
 
-        // LAPACK routine to compute the inverse of the upper triangular matrix R
-        info = LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'U', 'N', n, R_inv, lda);
-        if (info != 0) {
-            fprintf(stderr, "Error in LAPACKE_dtrtri: %d\n", info);
-            MPI_Abort(MPI_COMM_WORLD, 1);
-        }
-
-        printf("R inverse matrix:\n");
-        for (int i = 0; i < block.n; i++) {
-            for (int j = 0; j < block.n; j++) {
-                printf("%.2f ", R_inv[i * block.n + j]);
-            }
-            printf("\n");
-        }
-
-        *Q = (double *)malloc(nprocs * block.local_rows * block.n * sizeof(double));
-
-        // Compute Q = A * R_inv
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, nprocs * block.local_rows, n, n, 1.0, full_matrix, n, R_inv, n, 0.0, *Q, n);
-
-        printf("Q matrix:\n");
-        for (int i = 0; i < nprocs * block.local_rows; i++) {
-            for (int j = 0; j < block.n; j++) {
-                printf("%.3f ", (*Q)[i * block.n + j]);
-            }
-            printf("\n");
-        }
-
-        free(R_inv);
-        free(full_matrix);
+    // LAPACK routine to compute the inverse of the upper triangular matrix R
+    info = LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'U', 'N', n, R_inv, lda);
+    if (info != 0)
+    {
+        fprintf(stderr, "Error in LAPACKE_dtrtri: %d\n", info);
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
+
+    // Compute Q = A * R_inv
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, block.local_rows, n, n, 1.0, full_matrix, n, R_inv, n, 0.0, *Q, n);
+
+    free(R_inv);
 }
-   
 #endif // TSQR_H
