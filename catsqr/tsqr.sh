@@ -9,8 +9,6 @@
 # [load up the correct modules, if required](#load-up-the-correct-modules-if-required)
 module load openmpi/4.1.6-gcc-8.5.0-fjgly4p intel_ipp_intel64/latest mkl/2024.1
 
-cd /home/users/mschpc/2023/hodginsh/hpcproject/catsqr
-
 # [launch the code](#launch-the-code)
 #mpirun -np $SLURM_NTASKS ./tsqr
 mpirun ./tsqr
