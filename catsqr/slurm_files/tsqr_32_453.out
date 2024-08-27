@@ -1,0 +1,71 @@
+Max time: 0.025627 seconds
+Min time: 0.025608 seconds
+Avg time: 0.025619 seconds
+
+
+###############################################################################
+TCHPC Cluster: seagull
+Job 453 (tsqr) for User 'hodginsh' in Account '(null)'
+Finished at: Mon Aug 26 21:23:12 IST 2024
+
+Job efficiency estimates:
+=========================
+
+
+
+Job completion status:
+======================
+
+JobID           JobName AllocCPUS NTasks NNodes     MaxRSS    MaxRSSNode  MaxDiskRead MaxDiskWrite    Elapsed      State ExitCode 
+------------ ---------- --------- ------ ------ ---------- ------------- ------------ ------------ ---------- ---------- -------- 
+453          allocation        32             2                                                      00:00:01  COMPLETED      0:0 
+453.batch         batch        16      1      1          0  seagull-n001            0        0.00M   00:00:01  COMPLETED      0:0 
+453.extern       extern        32      2      2                                                      00:00:01  COMPLETED      0:0 
+
+
+Job details:
+============
+
+JobId=453 JobName=tsqr
+   UserId=hodginsh(1748) GroupId=hodginsh(1504) MCS_label=N/A
+   Priority=107500 Nice=0 Account=(null) QOS=normal
+   JobState=COMPLETING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   DerivedExitCode=0:0
+   RunTime=00:00:01 TimeLimit=1-03:00:00 TimeMin=N/A
+   SubmitTime=2024-08-26T21:23:11 EligibleTime=2024-08-26T21:23:11
+   AccrueTime=2024-08-26T21:23:11
+   StartTime=2024-08-26T21:23:11 EndTime=2024-08-26T21:23:12 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2024-08-26T21:23:11 Scheduler=Main
+   Partition=compute AllocNode:Sid=seagull01:569467
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=seagull-n[001-002]
+   BatchHost=seagull-n001
+   NumNodes=2 NumCPUs=32 NumTasks=32 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=32,mem=63000M,node=1,billing=32
+   AllocTRES=cpu=32,mem=126000M,node=2,billing=32
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   JOB_GRES=(null)
+     Nodes=seagull-n[001-002] CPU_IDs=0-15 Mem=63000 GRES=
+   MinCPUsNode=1 MinMemoryNode=63000M MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) Network=(null)
+   Command=/home/users/mschpc/2023/hodginsh/hpcproject/catsqr/job.sh
+   WorkDir=/home/users/mschpc/2023/hodginsh/hpcproject/catsqr
+   StdErr=/home/users/mschpc/2023/hodginsh/hpcproject/catsqr/./slurm_files/tsqr_32_453.out
+   StdIn=/dev/null
+   StdOut=/home/users/mschpc/2023/hodginsh/hpcproject/catsqr/./slurm_files/tsqr_32_453.out
+   Power=
+   
+
+
+Acknowledgements:
+=================
+
+Note that usage of TCHPC Resources *must* be acknowledged in all publications.
+
+Please see this page for details relevant to this cluster:
+
+http://www.tchpc.tcd.ie/resources/acknowledgementpolicy
+
+################################################################################
